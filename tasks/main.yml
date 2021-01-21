@@ -80,8 +80,15 @@
   when: phpstorm_installed_build_available_check.stat is defined and phpstorm_installed_build_available_check.stat.exists
 
 - name: Get currently installed build version
+  slurp:
+    src: "{{ phpstorm_build_path }}"
+  register: phpstorm_found_build_version_slurpfile
+  when:
+    - phpstorm_installed_build_version_available == true
+
+- name: Decode build version and store as fact
   set_fact:
-    phpstorm_found_build_version: "{{ lookup('file', phpstorm_build_path) }}"
+    phpstorm_found_build_version: "{{ phpstorm_found_build_version_slurpfile.content | b64decode }}"
   when:
     - phpstorm_installed_build_version_available == true
 
@@ -123,7 +130,9 @@
   become_user: "{{ ansible_user}}"
 
 - name: Remove currently installed version
-  local_action: file path={{phpstorm_install_path}} state=absent
+  file:
+    path={{phpstorm_install_path}}
+    state=absent
   when:
     - phpstorm_can_be_installed == true
     - phpstorm_already_exists == true
@@ -141,6 +150,7 @@
 
 - name: Extract PhpStorm
   unarchive:
+    remote_src: yes
     extra_opts: ['--strip-components=1']
     src: "{{ phpstorm_archive_path }}"
     dest: "{{ phpstorm_install_path }}"
